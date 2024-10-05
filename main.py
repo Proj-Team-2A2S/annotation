@@ -1,6 +1,6 @@
 import cv2
 import os
-#import numpy as np
+import numpy as np
 
 image_path = "./rawdata/Compressed Nepali Handwritten Data_48 (1).jpg"
 outputdir = "annotateddata"
@@ -12,10 +12,18 @@ def show(image, title):
 
 def generateContours(image : cv2.typing.MatLike):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 10)
+    kernel = np.array([[0, -1, 0],
+                       [-1, 5, -1],
+                       [0, -1, 0]])
+    sharpened = cv2.filter2D(gray, -1, kernel)
+    thresh = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 10)
     inverted_thresh = cv2.bitwise_not(thresh)
     contours, _ = cv2.findContours(inverted_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    return contours
+    ncounturs = []
+    for c in contours:
+        x, y, w, h = cv2.boundingRect(c)
+        if 20<w<100 and 20<h<100: ncounturs.append(c)
+    return ncounturs
 
 def highlightContours(image, contours):
     for contour in contours:
@@ -29,9 +37,6 @@ def saveContours(image, contours, dirname):
     cell_count = 0
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
-
-        if w < 20 or h < 20: continue
-
         cell = image[y:y+h, x:x+w]
         cell_filename = f"{dirname}/cell_{cell_count}.png"
         cv2.imwrite(cell_filename, cell)
